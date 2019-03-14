@@ -692,9 +692,9 @@ def saveHTML(movies, filePath):
 			descriptionBlock += descriptionTemplate.format("возраст", movie["ratingAgeLimits"])
 		descriptionBlock += descriptionTemplate.format("продолжительность", movie["filmLength"])
 		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", movie["ratingKP"])
-		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y"))
 		if len(movie["ratingIMDb"]) > 0:
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", movie["ratingIMDb"])
+		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y"))
 		descriptionBlock += descriptionTemplate.format("описание", movie["description"])
 		
 		torrents = movie["torrents"]
