@@ -39,7 +39,8 @@ if SOCKS_IP:
 	import socket
 
 def digitalReleases(days):
-	tmpSet = set()
+	rDict = {}
+	result = []
 	
 	currentDate = datetime.date.today()
 	print("Текущая дата: " + currentDate.strftime("%d.%m.%Y"))
@@ -115,11 +116,17 @@ def digitalReleases(days):
 				releaseDate = datetime.datetime.strptime(releaseDateStr, "%Y-%m-%d").date()
 				
 				if targetDate <= releaseDate <= currentDate:
-					tmpSet.add(str(filmID))
+					rDict[str(filmID)] = releaseDate
 		else:
 			raise ValueError("Ошибка загрузки релизов за " + downloadDate.strftime("%m.%Y") + ".")
-	print("Загружены ID от {} релизов.".format(len(tmpSet)))
-	return list(tmpSet)
+	
+	print("Загружены ID от {} релизов.".format(len(rDict)))
+	
+	for key, value in rDict.items():
+		temp = {"filmID": key, "releaseDate":value}
+		result.append(temp)
+		
+	return result
 
 def filmDetail(filmID):
 	print("Загрузка данных для filmID " + filmID + ".")
@@ -685,6 +692,7 @@ def saveHTML(movies, filePath):
 			descriptionBlock += descriptionTemplate.format("возраст", movie["ratingAgeLimits"])
 		descriptionBlock += descriptionTemplate.format("продолжительность", movie["filmLength"])
 		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", movie["ratingKP"])
+		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y"))
 		if len(movie["ratingIMDb"]) > 0:
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", movie["ratingIMDb"])
 		descriptionBlock += descriptionTemplate.format("описание", movie["description"])
@@ -719,16 +727,18 @@ def main():
 	releases = digitalReleases(DAYS)
 	movies = []
 
-	for filmID in releases:
-		torrents = rutorLinks(filmID)
+	for release in releases:
+		torrents = rutorLinks(release["filmID"])
 		if len(torrents) == 0:
 			continue
 	
-		detail = filmDetail(filmID)
+		detail = filmDetail(release["filmID"])
+		detail["releaseDate"] = release["releaseDate"]
 		detail["torrents"] = torrents
 		movies.append(detail)
 
 	movies.sort(key = operator.itemgetter("ratingFloat"), reverse = True)
+	#movies.sort(key = operator.itemgetter("releaseDate"), reverse = True)
 	
 	saveHTML(movies, HTML_SAVE_PATH)
 	
