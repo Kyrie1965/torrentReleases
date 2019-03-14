@@ -420,21 +420,21 @@ def rutorLinks(filmID):
 	
 	if result.get("WEB-DL 1080p"):
 		finalResult.append({"link": result["WEB-DL 1080p"]["link"], "type": "WEB-DL 1080p"})
-	if result.get("WEB-DL 2160p SDR"):
-		finalResult.append({"link": result["WEB-DL 2160p SDR"]["link"], "type": "WEB-DL 2160p SDR"})
 	if result.get("WEB-DL 2160p HDR"):
 		finalResult.append({"link": result["WEB-DL 2160p HDR"]["link"], "type": "WEB-DL 2160p HDR"})
+	elif result.get("WEB-DL 2160p SDR"):
+		finalResult.append({"link": result["WEB-DL 2160p SDR"]["link"], "type": "WEB-DL 2160p SDR"})
 	if result.get("BDRip 1080p"):
 		finalResult.append({"link": result["BDRip 1080p"]["link"], "type": "BDRip 1080p"})
 	if result.get("BDRip-HEVC 1080p"):
 		finalResult.append({"link": result["BDRip-HEVC 1080p"]["link"], "type": "BDRip-HEVC 1080p"})
 	if result.get("BDRemux"):
 		finalResult.append({"link": result["BDRemux"]["link"], "type": "BDRemux"})
-	if result.get("UHD BDRemux SDR"):
-		finalResult.append({"link": result["UHD BDRemux SDR"]["link"], "type": "UHD BDRemux SDR"})
 	if result.get("UHD BDRemux HDR"):
 		finalResult.append({"link": result["UHD BDRemux HDR"]["link"], "type": "UHD BDRemux HDR"})
-		
+	elif result.get("UHD BDRemux SDR"):
+		finalResult.append({"link": result["UHD BDRemux SDR"]["link"], "type": "UHD BDRemux SDR"})
+
 	#print(finalResult)
 		
 	return finalResult
