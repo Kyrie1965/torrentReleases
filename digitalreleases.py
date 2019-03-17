@@ -706,7 +706,7 @@ def saveHTML(movies, filePath):
 		descriptionBlock += descriptionTemplate.format("актёры", movie["actors"])
 		descriptionBlock += descriptionTemplate.format("жанр", movie["genre"])
 		if len(movie["ratingAgeLimits"]) > 0:
-			descriptionBlock += descriptionTemplate.format("возраст", movie["ratingAgeLimits"] + "и старше")
+			descriptionBlock += descriptionTemplate.format("возраст", movie["ratingAgeLimits"] + " и старше")
 		descriptionBlock += descriptionTemplate.format("продолжительность", movie["filmLength"])
 		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(movie["webURL"], movie["ratingKP"]))
 		if len(movie["ratingIMDb"]) > 0:
