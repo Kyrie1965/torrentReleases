@@ -344,7 +344,7 @@ def rutorLinks(filmID):
 	for i in range(len(matches1)):
 		link = matches1[i].strip()
 		if not link.startswith("http"):
-			link = urljoin("http://www.rutor.info", link)
+			link = urljoin("http://rutor.info", link)
 		tmpDict = {"link": link, "name": html.unescape(matches2[i][1]).strip(), "seeders": int(html.unescape(matches3[i]).strip()), "magnet": "magnet:" + (matches4[i]).strip()}
 		allTorrents.append(tmpDict)
 	
