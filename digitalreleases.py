@@ -356,7 +356,7 @@ def rutorLinks(filmID):
 		components = dateStr.split("&nbsp;")
 		if (len(components) != 3):
 			raise ValueError("Ошибка загрузки торрент-ссылок для filmID " + filmID + ". Неверный формат даты.")
-		torrentDate = datetime.date(int(components[2]), months[components[1]], int(components[0]))
+		torrentDate = datetime.date((int(components[2]) + 2000) if int(components[2]) < 2000 else int(components[2]), months[components[1]], int(components[0]))
 		#print(torrentDate)
 		tmpDict = {"link": link, "name": html.unescape(matches2[i][1]).strip(), "seeders": int(html.unescape(matches3[i]).strip()), "magnet": "magnet:" + (matches4[i]).strip(), "date": torrentDate}
 		allTorrents.append(tmpDict)
@@ -727,8 +727,9 @@ def saveHTML(movies, filePath):
 		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(movie["webURL"], movie["ratingKP"]))
 		if len(movie["ratingIMDb"]) > 0:
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", movie["ratingIMDb"])
-		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y"))
+		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y") + " (качественный " + "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(RUTOR_BASE_URL + movie["filmID"], "торрент-релиз") + " " + movie["torrentsDate"].strftime("%d.%m.%Y") + ")")
 		descriptionBlock += descriptionTemplate.format("описание", movie["description"])
+		
 		
 		torrents = movie["torrents"]
 		buttonsBlock = "" 
