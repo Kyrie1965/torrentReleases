@@ -1,6 +1,6 @@
 ### DAYS — за сколько последних дней загружать цифровые релизы. По умолчанию 60.
 ### SOCKS_IP и SOCKS_PORT — IP-адрес и порт SOCKS Proxy. Если они указаны, то будет импортирована библиотека (PySocks), а в функции rutorLinks запросы будет обрабатываться через указанный прокси-сервер. В digitalReleases и filmDetail запросы всегда идут без прокси.
-### SORT_TYPE — тип финальной сортировки. rating — сортировка по рейтингу, releaseDate — сортировка по дате цифрового релиза релиза.
+### SORT_TYPE — тип финальной сортировки. rating — сортировка по рейтингу, releaseDate — сортировка по дате цифрового релиза, torrentsDate — сортировка по дате появления торрента.
 ### USE_MAGNET — использование Magnet-ссылок вместо ссылок на торрент-файлы.
 
 
@@ -49,12 +49,14 @@ def digitalReleases(days):
 	rDict = {}
 	result = []
 	
-	currentDate = datetime.date.today()
-	print("Текущая дата: " + currentDate.strftime("%d.%m.%Y"))
+	currentDateReal = datetime.date.today()
+	currentDate = currentDateReal + datetime.timedelta(days=7)
+
+	print("Текущая дата (с запасом 7 дней): " + currentDate.strftime("%d.%m.%Y"))
 	downloadDates =[currentDate]
 	targetDate = datetime.date.today() - datetime.timedelta(days=days)
 	print("Целевая дата: " + targetDate.strftime("%d.%m.%Y"))
-	iterationDate = datetime.date.today()
+	iterationDate = datetime.date.today() + datetime.timedelta(days=7)
 	
 	while (targetDate.year != iterationDate.year) or (targetDate.month != iterationDate.month):
 		iterationDate = iterationDate.replace(day=1) - datetime.timedelta(days=1)
@@ -122,7 +124,7 @@ def digitalReleases(days):
 					raise ValueError("Ошибка загрузки релизов за " + downloadDate.strftime("%m.%Y") + ". Проблемы с releaseDate в одном из элементов items.")
 				releaseDate = datetime.datetime.strptime(releaseDateStr, "%Y-%m-%d").date()
 				
-				if targetDate <= releaseDate <= currentDate:
+				if (targetDate <= releaseDate) and (releaseDate <= currentDate):
 					rDict[str(filmID)] = releaseDate
 		else:
 			raise ValueError("Ошибка загрузки релизов за " + downloadDate.strftime("%m.%Y") + ".")
@@ -337,15 +339,26 @@ def rutorLinks(filmID):
 	matches3 = re.findall(patternSeeders, content)
 	patternMagnet = re.compile("<a href=\"magnet:(.*?)\">")
 	matches4 = re.findall(patternMagnet, content)
-	if len(matches1) != len(matches2) != len(matches3) != len(matches4):
+	patternDate = re.compile("<td>(.*?)</td><td ") #09&nbsp;Мар&nbsp;19
+	matches5 = re.findall(patternDate, content)
+	#print(str(len(matches1)) + " " + str(len(matches2)) + " " +str(len(matches3)) + " " + str(len(matches4)) + " " + str(len(matches5)))
+	if (len(matches1) != len(matches2)) or (len(matches1) != len(matches3)) or (len(matches1) != len(matches4)) or (len(matches1) != len(matches4)) or (len(matches1) != len(matches5)):
 		raise IndexError("Ошибка загрузки торрент-ссылок для filmID " + filmID + ". Неверный формат блока с торрентами.")
+		
+	months = {"Янв": 1, "Фев": 2, "Мар": 3, "Апр": 4, "Май": 5, "Июн": 6, "Июл": 7, "Авг": 8, "Сен": 9, "Окт": 10, "Ноя": 11, "Дек": 12}
 	
 	allTorrents = []
 	for i in range(len(matches1)):
 		link = matches1[i].strip()
 		if not link.startswith("http"):
 			link = urljoin("http://rutor.info", link)
-		tmpDict = {"link": link, "name": html.unescape(matches2[i][1]).strip(), "seeders": int(html.unescape(matches3[i]).strip()), "magnet": "magnet:" + (matches4[i]).strip()}
+		dateStr = matches5[i].strip()
+		components = dateStr.split("&nbsp;")
+		if (len(components) != 3):
+			raise ValueError("Ошибка загрузки торрент-ссылок для filmID " + filmID + ". Неверный формат даты.")
+		torrentDate = datetime.date(int(components[2]), months[components[1]], int(components[0]))
+		#print(torrentDate)
+		tmpDict = {"link": link, "name": html.unescape(matches2[i][1]).strip(), "seeders": int(html.unescape(matches3[i]).strip()), "magnet": "magnet:" + (matches4[i]).strip(), "date": torrentDate}
 		allTorrents.append(tmpDict)
 	
 	result = {}
@@ -373,59 +386,59 @@ def rutorLinks(filmID):
 			if "HDR" in tags:
 				if result.get("UHD BDRemux HDR") != None:
 					if item["seeders"] > result["UHD BDRemux HDR"]["seeders"]:
-						result["UHD BDRemux HDR"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+						result["UHD BDRemux HDR"] = item #{"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
 				else:
-					result["UHD BDRemux HDR"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["UHD BDRemux HDR"] = item
 				#print("!UHD BDRemux HDR: " + tmpParts[0])
 			else:
 				if result.get("UHD BDRemux SDR") != None:
 					if item["seeders"] > result["UHD BDRemux SDR"]["seeders"]:
-						result["UHD BDRemux SDR"] = {"link": item["link"], "magnet": item["magnet"], "seeders": item["seeders"]}
+						result["UHD BDRemux SDR"] = item
 				else:
-					result["UHD BDRemux SDR"] = {"link": item["link"], "magnet": item["magnet"], "seeders": item["seeders"]}
+					result["UHD BDRemux SDR"] = item
 				#print("!UHD BDRemux SDR: " + tmpParts[0])
 		elif "BDREMUX" in realName:
 			if result.get("BDRemux") != None:
 				if item["seeders"] > result["BDRemux"]["seeders"]:
-					result["BDRemux"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["BDRemux"] = item
 			else:
-				result["BDRemux"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+				result["BDRemux"] = item
 			#print("!BDRemux: " + tmpParts[0])
 		elif "BDRIP-HEVC 1080" in realName:
 			if result.get("BDRip-HEVC 1080p") != None:
 				if item["seeders"] > result["BDRip-HEVC 1080p"]["seeders"]:
-					result["BDRip-HEVC 1080p"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["BDRip-HEVC 1080p"] = item
 			else:
-				result["BDRip-HEVC 1080p"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+				result["BDRip-HEVC 1080p"] = item
 			#print("!BDRip-HEVC 1080p: " + tmpParts[0])
 		elif "BDRIP 1080" in realName:
 			if result.get("BDRip 1080p") != None:
 				if item["seeders"] > result["BDRip 1080p"]["seeders"]:
-					result["BDRip 1080p"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["BDRip 1080p"] = item
 			else:
-				result["BDRip 1080p"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+				result["BDRip 1080p"] = item
 			#print("!BDRip 1080p: " + tmpParts[0])
 		elif "WEB-DL 2160" in realName:
 			if "HDR" in tags:
 				if result.get("WEB-DL 2160p HDR") != None:
 					if item["seeders"] > result["WEB-DL 2160p HDR"]["seeders"]:
-						result["WEB-DL 2160p HDR"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+						result["WEB-DL 2160p HDR"] = item
 				else:
-					result["WEB-DL 2160p HDR"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["WEB-DL 2160p HDR"] = item
 				#print("!WEB-DL 2160p HDR: " + tmpParts[0])
 			else:
 				if result.get("WEB-DL 2160p SDR") != None:
 					if item["seeders"] > result["WEB-DL 2160p SDR"]["seeders"]:
-						result["WEB-DL 2160p SDR"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+						result["WEB-DL 2160p SDR"] = item
 				else:
-					result["WEB-DL 2160p SDR"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["WEB-DL 2160p SDR"] = item
 				#print("!WEB-DL 2160p SDR: " + tmpParts[0])
 		elif "WEB-DL 1080" in realName:
 			if result.get("WEB-DL 1080p") != None:
 				if item["seeders"] > result["WEB-DL 1080p"]["seeders"]:
-					result["WEB-DL 1080p"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+					result["WEB-DL 1080p"] = item
 			else:
-				result["WEB-DL 1080p"] = {"link": item["link"], "magnet": item["magnet"],  "seeders": item["seeders"]}
+				result["WEB-DL 1080p"] = item
 			#print("!WEB-DL 1080p: " + tmpParts[0])
 	
 	if result.get("UHD BDRemux HDR") or result.get("UHD BDRemux SDR") or result.get("BDRip-HEVC 1080p") or result.get("BDRip 1080p"):
@@ -436,21 +449,21 @@ def rutorLinks(filmID):
 	finalResult = []
 	
 	if result.get("WEB-DL 1080p"):
-		finalResult.append({"link": result["WEB-DL 1080p"]["link"], "magnet": result["WEB-DL 1080p"]["magnet"], "type": "WEB-DL 1080p"})
+		finalResult.append({"link": result["WEB-DL 1080p"]["link"], "magnet": result["WEB-DL 1080p"]["magnet"], "date": result["WEB-DL 1080p"]["date"], "type": "WEB-DL 1080p"})
 	if result.get("WEB-DL 2160p HDR"):
-		finalResult.append({"link": result["WEB-DL 2160p HDR"]["link"], "magnet": result["WEB-DL 2160p HDR"]["magnet"], "type": "WEB-DL 2160p HDR"})
+		finalResult.append({"link": result["WEB-DL 2160p HDR"]["link"], "magnet": result["WEB-DL 2160p HDR"]["magnet"], "date": result["WEB-DL 2160p HDR"]["date"], "type": "WEB-DL 2160p HDR"})
 	elif result.get("WEB-DL 2160p SDR"):
-		finalResult.append({"link": result["WEB-DL 2160p SDR"]["link"], "magnet": result["WEB-DL 2160p SDR"]["magnet"], "type": "WEB-DL 2160p SDR"})
+		finalResult.append({"link": result["WEB-DL 2160p SDR"]["link"], "magnet": result["WEB-DL 2160p SDR"]["magnet"], "date": result["WEB-DL 2160p SDR"]["date"], "type": "WEB-DL 2160p SDR"})
 	if result.get("BDRip 1080p"):
-		finalResult.append({"link": result["BDRip 1080p"]["link"], "magnet": result["BDRip 1080p"]["magnet"], "type": "BDRip 1080p"})
+		finalResult.append({"link": result["BDRip 1080p"]["link"], "magnet": result["BDRip 1080p"]["magnet"], "date": result["BDRip 1080p"]["date"], "type": "BDRip 1080p"})
 	if result.get("BDRip-HEVC 1080p"):
-		finalResult.append({"link": result["BDRip-HEVC 1080p"]["link"], "magnet": result["BDRip-HEVC 1080p"]["magnet"], "type": "BDRip-HEVC 1080p"})
+		finalResult.append({"link": result["BDRip-HEVC 1080p"]["link"], "magnet": result["BDRip-HEVC 1080p"]["magnet"], "date": result["BDRip-HEVC 1080p"]["date"], "type": "BDRip-HEVC 1080p"})
 	if result.get("BDRemux"):
-		finalResult.append({"link": result["BDRemux"]["link"], "magnet": result["BDRemux"]["magnet"], "type": "BDRemux"})
+		finalResult.append({"link": result["BDRemux"]["link"], "magnet": result["BDRemux"]["magnet"], "date": result["BDRemux"]["date"], "type": "BDRemux"})
 	if result.get("UHD BDRemux HDR"):
-		finalResult.append({"link": result["UHD BDRemux HDR"]["link"], "magnet": result["UHD BDRemux HDR"]["magnet"], "type": "UHD BDRemux HDR"})
+		finalResult.append({"link": result["UHD BDRemux HDR"]["link"], "magnet": result["UHD BDRemux HDR"]["magnet"], "date": result["UHD BDRemux HDR"]["date"], "type": "UHD BDRemux HDR"})
 	elif result.get("UHD BDRemux SDR"):
-		finalResult.append({"link": result["UHD BDRemux SDR"]["link"], "magnet": result["UHD BDRemux SDR"]["magnet"], "type": "UHD BDRemux SDR"})
+		finalResult.append({"link": result["UHD BDRemux SDR"]["link"], "magnet": result["UHD BDRemux SDR"]["magnet"], "date": result["UHD BDRemux SDR"]["date"], "type": "UHD BDRemux SDR"})
 
 	#print(finalResult)
 		
@@ -699,6 +712,9 @@ def saveHTML(movies, filePath):
       </div>
 """
 	for movie in movies:
+		#print(movie["nameRU"])
+		#print(movie["torrentsDate"])
+		#print(movie["releaseDate"])
 		descriptionBlock = ""
 		descriptionBlock += descriptionTemplate.format("год", movie["year"])
 		descriptionBlock += descriptionTemplate.format("страна", movie["country"])
@@ -753,14 +769,22 @@ def main():
 		torrents = rutorLinks(release["filmID"])
 		if len(torrents) == 0:
 			continue
-	
+		
+		dates = []
+		for torrent in torrents:
+			dates.append(torrent["date"])
+		dates.sort()
+		
 		detail = filmDetail(release["filmID"])
 		detail["releaseDate"] = release["releaseDate"]
 		detail["torrents"] = torrents
+		detail["torrentsDate"] = dates[0]
 		movies.append(detail)
 	
 	if (SORT_TYPE == "rating"):
 		movies.sort(key = operator.itemgetter("ratingFloat"), reverse = True)
+	elif (SORT_TYPE == "torrentsDate"):
+		movies.sort(key = operator.itemgetter("torrentsDate"), reverse = True)
 	else:
 		movies.sort(key = operator.itemgetter("releaseDate"), reverse = True)
 	
