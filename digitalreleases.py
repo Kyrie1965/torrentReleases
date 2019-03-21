@@ -219,7 +219,7 @@ def filmDetail(filmID):
 			raise ValueError("Ошибка загрузки данных для filmID " + filmID + ". Проблемы со значением ratingData.")
 		ratingKP = ratingData.get("rating")
 		if ratingKP == None or not isinstance(ratingKP, str):
-			ratingKP = "0"
+			ratingKP = ""
 		ratingIMDb = ratingData.get("ratingIMDb")
 		if ratingIMDb == None or not isinstance(ratingIMDb, str):
 			ratingIMDb = ""
@@ -251,8 +251,12 @@ def filmDetail(filmID):
 	
 	if ratingIMDb and ratingKP:
 		rating = "{0:.1f}".format((float(ratingKP) + float(ratingIMDb)) / 2.0 + 0.001)
-	else:
+	elif ratingKP:
 		rating = ratingKP
+	elif ratingIMDb:
+		rating = ratingIMDb
+	else:
+		rating = "0"
 	
 	directorsResult = ""
 	if len(directors) > 0:
@@ -722,12 +726,26 @@ def saveHTML(movies, filePath):
 		descriptionBlock += descriptionTemplate.format("актёры", movie["actors"])
 		descriptionBlock += descriptionTemplate.format("жанр", movie["genre"])
 		if len(movie["ratingAgeLimits"]) > 0:
-			descriptionBlock += descriptionTemplate.format("возраст", movie["ratingAgeLimits"] + " и старше")
+			if int(movie["ratingAgeLimits"]) <= 6:
+				descriptionBlock += descriptionTemplate.format("возраст", "от 6 лет")
+			elif int(movie["ratingAgeLimits"]) <= 12:
+				descriptionBlock += descriptionTemplate.format("возраст", "от 12 лет")
+			elif int(movie["ratingAgeLimits"]) <= 16:
+				descriptionBlock += descriptionTemplate.format("возраст", "от 16 лет")
+			elif int(movie["ratingAgeLimits"]) <= 18:
+				descriptionBlock += descriptionTemplate.format("возраст", "от 18 лет")
+		#descriptionBlock += descriptionTemplate.format("возраст", movie["ratingAgeLimits"] + " и старше")
 		descriptionBlock += descriptionTemplate.format("продолжительность", movie["filmLength"])
-		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(movie["webURL"], movie["ratingKP"]))
+		if len(movie["ratingKP"]) > 0:
+			rKP = movie["ratingKP"]
+		else:
+			rKP = "отсутствует"
+		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(movie["webURL"], rKP))
 		if len(movie["ratingIMDb"]) > 0:
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", movie["ratingIMDb"])
-		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y") + " (качественный " + "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(RUTOR_BASE_URL + movie["filmID"], "торрент-релиз") + " " + movie["torrentsDate"].strftime("%d.%m.%Y") + ")")
+		descriptionBlock += descriptionTemplate.format("цифровой релиз", movie["releaseDate"].strftime("%d.%m.%Y"))
+		
+		descriptionBlock += descriptionTemplate.format("торрент-релиз", "<a href=\"{}\" style=\"text-decoration: underline; color:black\">{}</a>".format(RUTOR_BASE_URL + movie["filmID"], movie["torrentsDate"].strftime("%d.%m.%Y")))
 		descriptionBlock += descriptionTemplate.format("описание", movie["description"])
 		
 		
