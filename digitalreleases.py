@@ -514,7 +514,29 @@ def saveHTML(movies, filePath):
       position: relative;
       margin: 0 auto;
   }
-
+  .sbb {
+      background-color: #f2f2f2;
+      text-align: right;
+      padding-right:10px;
+  }
+  .sButton {
+    display: inline-block;
+    background:none;
+    border:none;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding:0;
+    cursor: pointer;
+    text-decoration: dashed underline;
+    font-family: tahoma,verdana,arial;
+    font-size: 13px;
+  }
+  #sortButton1 {
+  }
+  #sortButton2 {
+  }
+  #sortButton3 {
+  }
   .block2 {
       position: relative;
       background-color: #f2f2f2;
@@ -676,9 +698,60 @@ def saveHTML(movies, filePath):
       font-family: Arial,Tahoma,Verdana,sans-serif;
   }
 </style>
+<script>
+function sortElements(sortType){
+    var container = document.getElementsByClassName('block1')[0];
+    var newContainer = container.cloneNode(false);
+
+    var items = [];
+    for(var i = container.childNodes.length; i--;){
+        if(container.childNodes[i].nodeName === 'DIV')
+            items.push(container.childNodes[i]);
+    }
+    
+    if(sortType === 1) {
+    items.sort(function(a, b){
+       return (Math.round(parseFloat(b.getAttribute('date-rating'))*10) - Math.round(parseFloat(a.getAttribute('date-rating'))*10));
+    });
+    } else if(sortType === 2) {
+    items.sort(function(a, b){
+       var aDate = new Date(a.getAttribute('data-releaseDate'));
+       var bDate = new Date(b.getAttribute('data-releaseDate'));
+       return (Number(bDate) - Number(aDate));
+    });
+    } else {
+    items.sort(function(a, b){
+       var aDate = new Date(a.getAttribute('data-torrentDate'));
+       var bDate = new Date(b.getAttribute('data-torrentDate'));
+       return (Number(bDate) - Number(aDate));
+    });
+    }
+    
+    for(var i = 0; i < items.length; i++)
+        newContainer.appendChild(items[i]);
+    container.parentNode.replaceChild(newContainer, container);
+}
+
+function sortRating(){
+    sortElements(1)
+}
+
+function sortTorrentsDate(){
+    sortElements(3)
+}
+
+function sortReleaseDate(){
+    sortElements(2)
+}
+</script>
 </head>
 <body>
   <div class="shadow">
+    <div class="sbb">
+      <button id="sortButton1" class="sButton" onclick="sortRating()">по рейтингу</button>
+      <button id="sortButton2" class="sButton" onclick="sortReleaseDate()">по дате цифрового релиза</button>
+      <button id="sortButton3" class="sButton" onclick="sortTorrentsDate()">по дате торрент-релиза</button>
+    </div>
     <div class="block1" style="background-color: #f2f2f2;">"""
 	descriptionTemplate = """
                 <tr>
@@ -690,7 +763,7 @@ def saveHTML(movies, filePath):
                   </td>
                 </tr>"""
 	buttonsTemplate = """          <button class="torrentbutton" style="" onclick="location.href='{}'">{}</button>"""
-	movieTemplate = """      <div class="block2">
+	movieTemplate = """      <div class="block2" data-releaseDate="{}" data-torrentDate="{}" date-rating="{}">
         <div class="photoInfoTable">
           <div class="headerFilm">
             <h1 class="moviename" itemprop="name">{}</h1>
@@ -719,6 +792,7 @@ def saveHTML(movies, filePath):
 		#print(movie["nameRU"])
 		#print(movie["torrentsDate"])
 		#print(movie["releaseDate"])
+		
 		descriptionBlock = ""
 		descriptionBlock += descriptionTemplate.format("год", movie["year"])
 		descriptionBlock += descriptionTemplate.format("страна", movie["country"])
@@ -767,7 +841,7 @@ def saveHTML(movies, filePath):
 		elif movie["ratingFloat"] < 5.5:
 			ratingColor = "#b43c3c"
 			
-		html += movieTemplate.format(movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, movie["rating"], movie["posterURL"], movie["nameRU"], descriptionBlock, buttonsBlock)
+		html += movieTemplate.format(movie["releaseDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, movie["rating"], movie["posterURL"], movie["nameRU"], descriptionBlock, buttonsBlock)
 		
 	html += """    </div>
   </div>
