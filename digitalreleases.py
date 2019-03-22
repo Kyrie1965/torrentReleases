@@ -1,6 +1,6 @@
 ### DAYS — за сколько последних дней загружать цифровые релизы. По умолчанию 60.
 ### SOCKS_IP и SOCKS_PORT — IP-адрес и порт SOCKS Proxy. Если они указаны, то будет импортирована библиотека (PySocks), а в функции rutorLinks запросы будет обрабатываться через указанный прокси-сервер. В digitalReleases и filmDetail запросы всегда идут без прокси.
-### SORT_TYPE — тип финальной сортировки. rating — сортировка по рейтингу, releaseDate — сортировка по дате цифрового релиза, torrentsDate — сортировка по дате появления торрента.
+### SORT_TYPE — тип финальной сортировки. rating — сортировка по рейтингу, releaseDate — сортировка по дате цифрового релиза, torrentsDate — сортировка по дате появления торрента, comboDate — сортировка по комбинированное дате (наибольшая из releaseDate и torrentsDate).
 ### USE_MAGNET — использование Magnet-ссылок вместо ссылок на торрент-файлы.
 
 
@@ -532,11 +532,13 @@ def saveHTML(movies, filePath):
     font-size: 13px;
   }
 """
-	if (SORT_TYPE == "rating"):
+	if (SORT_TYPE == "releaseDate"):
 		html += """  #sortButton1 {
-  color: #f60;
   }
   #sortButton2 {
+  color: #f60;
+  }
+  #sortButton4 {
   }
   #sortButton3 {
   }"""
@@ -545,14 +547,28 @@ def saveHTML(movies, filePath):
   }
   #sortButton2 {
   }
+  #sortButton4 {
+  }
   #sortButton3 {
   color: #f60;
   }"""
-	else:
+	elif (SORT_TYPE == "comboDate"):
 		html += """  #sortButton1 {
   }
   #sortButton2 {
+  }
+  #sortButton4 {
   color: #f60;
+  }
+  #sortButton3 {
+  }"""
+	else:
+		html += """  #sortButton1 {
+  color: #f60;
+  }
+  #sortButton2 {
+  }
+  #sortButton4 {
   }
   #sortButton3 {
   }"""
@@ -729,21 +745,27 @@ function sortElements(sortType){
             items.push(container.childNodes[i]);
     }
     
-    if(sortType === 1) {
+    if(sortType === "torrentDate") {
     items.sort(function(a, b){
-       return (Math.round(parseFloat(b.getAttribute('date-rating'))*10) - Math.round(parseFloat(a.getAttribute('date-rating'))*10));
+       var aDate = new Date(a.getAttribute('data-torrentDate'));
+       var bDate = new Date(b.getAttribute('data-torrentDate'));
+       return (Number(bDate) - Number(aDate));
     });
-    } else if(sortType === 2) {
+    } else if(sortType === "releaseDate") {
     items.sort(function(a, b){
        var aDate = new Date(a.getAttribute('data-releaseDate'));
        var bDate = new Date(b.getAttribute('data-releaseDate'));
        return (Number(bDate) - Number(aDate));
     });
+    } else if(sortType === "comboDate") {
+    items.sort(function(a, b){
+       var aDate = new Date(a.getAttribute('data-comboDate'));
+       var bDate = new Date(b.getAttribute('data-comboDate'));
+       return (Number(bDate) - Number(aDate));
+    });
     } else {
     items.sort(function(a, b){
-       var aDate = new Date(a.getAttribute('data-torrentDate'));
-       var bDate = new Date(b.getAttribute('data-torrentDate'));
-       return (Number(bDate) - Number(aDate));
+       return (Math.round(parseFloat(b.getAttribute('data-rating'))*10) - Math.round(parseFloat(a.getAttribute('data-rating'))*10));
     });
     }
     
@@ -753,24 +775,34 @@ function sortElements(sortType){
 }
 
 function sortRating(){
-    sortElements(1);
+    sortElements("rating");
     document.getElementById("sortButton2").style.color = "black";
     document.getElementById("sortButton3").style.color = "black";
+    document.getElementById("sortButton4").style.color = "black";
     document.getElementById("sortButton1").style.color = "#f60";
 }
 
 function sortTorrentsDate(){
-    sortElements(3);
+    sortElements("torrentDate");
     document.getElementById("sortButton1").style.color = "black";
     document.getElementById("sortButton2").style.color = "black";
+    document.getElementById("sortButton4").style.color = "black";
     document.getElementById("sortButton3").style.color = "#f60";
 }
 
 function sortReleaseDate(){
-    sortElements(2);
+    sortElements("releaseDate");
     document.getElementById("sortButton1").style.color = "black";
     document.getElementById("sortButton3").style.color = "black";
+    document.getElementById("sortButton4").style.color = "black";
     document.getElementById("sortButton2").style.color = "#f60";
+}
+function sortComboDate(){
+    sortElements("comboDate");
+    document.getElementById("sortButton1").style.color = "black";
+    document.getElementById("sortButton3").style.color = "black";
+    document.getElementById("sortButton2").style.color = "black";
+    document.getElementById("sortButton4").style.color = "#f60";
 }
 </script>
 </head>
@@ -780,6 +812,7 @@ function sortReleaseDate(){
       <button id="sortButton1" class="sButton" onclick="sortRating()">по рейтингу</button>
       <button id="sortButton2" class="sButton" onclick="sortReleaseDate()">по дате цифрового релиза</button>
       <button id="sortButton3" class="sButton" onclick="sortTorrentsDate()">по дате торрент-релиза</button>
+      <button id="sortButton4" class="sButton" onclick="sortComboDate()">по комбинированной дате</button>
     </div>
     <div class="block1" style="background-color: #f2f2f2;">"""
 	descriptionTemplate = """
@@ -792,7 +825,7 @@ function sortReleaseDate(){
                   </td>
                 </tr>"""
 	buttonsTemplate = """          <button class="torrentbutton" style="" onclick="location.href='{}'">{}</button>"""
-	movieTemplate = """      <div class="block2" data-releaseDate="{}" data-torrentDate="{}" date-rating="{}">
+	movieTemplate = """      <div class="block2" data-releaseDate="{}" data-torrentDate="{}" data-rating="{}" data-comboDate="{}">
         <div class="photoInfoTable">
           <div class="headerFilm">
             <h1 class="moviename" itemprop="name">{}</h1>
@@ -870,7 +903,7 @@ function sortReleaseDate(){
 		elif movie["ratingFloat"] < 5.5:
 			ratingColor = "#b43c3c"
 			
-		html += movieTemplate.format(movie["releaseDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, movie["rating"], movie["posterURL"], movie["nameRU"], descriptionBlock, buttonsBlock)
+		html += movieTemplate.format(movie["releaseDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["comboDate"].strftime("%Y-%m-%d"), movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, movie["rating"], movie["posterURL"], movie["nameRU"], descriptionBlock, buttonsBlock)
 		
 	html += """    </div>
   </div>
@@ -901,14 +934,18 @@ def main():
 		detail["releaseDate"] = release["releaseDate"]
 		detail["torrents"] = torrents
 		detail["torrentsDate"] = dates[0]
+		detail["comboDate"] = max(release["releaseDate"], dates[0])
+		#print(detail["comboDate"])
 		movies.append(detail)
 	
-	if (SORT_TYPE == "rating"):
-		movies.sort(key = operator.itemgetter("ratingFloat"), reverse = True)
+	if (SORT_TYPE == "releaseDate"):
+		movies.sort(key = operator.itemgetter("releaseDate"), reverse = True)
 	elif (SORT_TYPE == "torrentsDate"):
 		movies.sort(key = operator.itemgetter("torrentsDate"), reverse = True)
+	elif (SORT_TYPE == "comboDate"):
+		movies.sort(key = operator.itemgetter("comboDate"), reverse = True)
 	else:
-		movies.sort(key = operator.itemgetter("releaseDate"), reverse = True)
+		movies.sort(key = operator.itemgetter("ratingFloat"), reverse = True)
 	
 	saveHTML(movies, HTML_SAVE_PATH)
 	
