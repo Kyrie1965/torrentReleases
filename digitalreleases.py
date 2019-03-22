@@ -531,12 +531,32 @@ def saveHTML(movies, filePath):
     font-family: tahoma,verdana,arial;
     font-size: 13px;
   }
-  #sortButton1 {
+"""
+	if (SORT_TYPE == "rating"):
+		html += """  #sortButton1 {
+  color: #f60;
   }
   #sortButton2 {
   }
   #sortButton3 {
+  }"""
+	elif (SORT_TYPE == "torrentsDate"):
+		html += """  #sortButton1 {
   }
+  #sortButton2 {
+  }
+  #sortButton3 {
+  color: #f60;
+  }"""
+	else:
+		html += """  #sortButton1 {
+  }
+  #sortButton2 {
+  color: #f60;
+  }
+  #sortButton3 {
+  }"""
+	html += """
   .block2 {
       position: relative;
       background-color: #f2f2f2;
@@ -733,15 +753,24 @@ function sortElements(sortType){
 }
 
 function sortRating(){
-    sortElements(1)
+    sortElements(1);
+    document.getElementById("sortButton2").style.color = "black";
+    document.getElementById("sortButton3").style.color = "black";
+    document.getElementById("sortButton1").style.color = "#f60";
 }
 
 function sortTorrentsDate(){
-    sortElements(3)
+    sortElements(3);
+    document.getElementById("sortButton1").style.color = "black";
+    document.getElementById("sortButton2").style.color = "black";
+    document.getElementById("sortButton3").style.color = "#f60";
 }
 
 function sortReleaseDate(){
-    sortElements(2)
+    sortElements(2);
+    document.getElementById("sortButton1").style.color = "black";
+    document.getElementById("sortButton3").style.color = "black";
+    document.getElementById("sortButton2").style.color = "#f60";
 }
 </script>
 </head>
