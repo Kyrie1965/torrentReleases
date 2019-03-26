@@ -14,12 +14,12 @@ import os
 import binascii
 
 LOAD_DAYS = 60
-USE_MAGNET = False
+USE_MAGNET = True
 SORT_TYPE = "torrentsDate" #rating
 MIN_VOTES_KP = 500
 MIN_VOTES_IMDB = 1500
 HTML_SAVE_PATH = "/opt/share/www/releases.html"
-#HTML_SAVE_PATH = r"C:\Users\Yuri\releases2.html"
+#HTML_SAVE_PATH = r"C:\Users\Yuri\releases.html"
 
 SOCKS5_IP = ""
 SOCKS5_PORT = 9050
@@ -55,6 +55,7 @@ def main():
 	except:
 		print("Сайт rutor.info недоступен, или изменился его формат данных.")
 		print("Работа программы принудительно завершена.")
+		return
 	else:
 		print("Сайт rutor.info доступен.")
 	
@@ -122,7 +123,7 @@ def rutorResultsForDays(days):
 	
 def convertRutorResults(rutorResults):
 	targetDate = datetime.date.today() - datetime.timedelta(days=LOAD_DAYS)
-	minPremierDate = datetime.date.today() - datetime.timedelta(days=365)
+	minPremierDate = datetime.date.today() - datetime.timedelta(days=(365 + LOAD_DAYS))
 	
 	movies = []
 	
@@ -937,6 +938,32 @@ def saveHTML(movies, filePath):
       display:inline-block;
   }
 
+  .trailersbutton {
+      cursor: pointer;
+      border: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-color: rgba(68, 68, 68, 0.9);
+      border-radius: 3px;
+      color: #fff;
+      display: block;
+      font: 12px Arial, sans-serif;
+      font-weight: normal;
+      line-height: normal;
+      font-weight: bold;
+      height: 35px;
+      line-height: 36px;
+      -webkit-transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+      -moz-transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+      transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+      text-align: center;
+      text-decoration: none;
+      width: 160px;
+      margin: 10px 0 10px 15px;
+      display:inline-block;
+  }
+
   .infoTable {
       float: left;
       display: block;
@@ -1071,6 +1098,9 @@ function sortTorrentsDate(){
               <div class="film-rating" style="background-color: {};">{}</div> 
               <img src="{}" alt="{}" itemprop="image" width="205"></img>
             </div>
+            <div class="movie-buttons-container">
+              <button class="trailersbutton" style="" onclick="window.open('{}','_blank');">Трейлеры</button>
+            </div>
           </div>
           <div class="infoTable">
             <table class="info">
@@ -1108,12 +1138,12 @@ function sortTorrentsDate(){
 		if len(movie["ratingKP"]) > 0:
 			rKP = movie["ratingKP"]
 		else:
-			rKP = "отсутствует или недостаточно голосов"
+			rKP = "нет (возможно, мало голосов)"
 		descriptionBlock += descriptionTemplate.format("рейтинг КиноПоиск", "<a href=\"{}\" style=\"text-decoration: underline; color:black\" target=\"_blank\">{}</a>".format(movie["webURL"], rKP))
 		if len(movie["ratingIMDb"]) > 0:
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", movie["ratingIMDb"])
 		else:
-			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", "отсутствует или недостаточно голосов")
+			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", "нет (возможно, мало голосов)")
 		descriptionBlock += descriptionTemplate.format("премьера", movie["premierDate"].strftime("%d.%m.%Y"))
 		descriptionBlock += descriptionTemplate.format("торрент-релиз", "<a href=\"{}\" style=\"text-decoration: underline; color:black\" target=\"_blank\">{}</a>".format("http://rutor.info/search/0/0/010/0/film%20" + movie["filmID"], movie["torrentsDate"].strftime("%d.%m.%Y")))
 		descriptionBlock += descriptionTemplate.format("описание", movie["description"])
@@ -1141,7 +1171,7 @@ function sortTorrentsDate(){
 		if movie["ratingFloat"] < 1:
 			rating = "—"
 		
-		html += movieTemplate.format(movie["torrentsDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["torrentsDate"].strftime("%Y-%m-%d"), movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, rating, movie["posterURL"], movie["nameRU"], descriptionBlock, buttonsBlock)
+		html += movieTemplate.format(movie["torrentsDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["torrentsDate"].strftime("%Y-%m-%d"), movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, rating, movie["posterURL"], movie["nameRU"], "https://www.kinopoisk.ru/film/{}/video/".format(movie["filmID"]), descriptionBlock, buttonsBlock)
 		
 	html += """    </div>
   </div>
