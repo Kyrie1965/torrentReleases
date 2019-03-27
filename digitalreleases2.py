@@ -20,8 +20,9 @@ MIN_VOTES_KP = 500
 MIN_VOTES_IMDB = 1500
 HTML_SAVE_PATH = "/opt/share/www/releases.html"
 #HTML_SAVE_PATH = r"C:\Users\Yuri\releases.html"
+HTML_SAVE_PATH_LINKS = "/opt/share/www/releases_links.html"
 
-SOCKS5_IP = ""
+SOCKS5_IP = "192.168.0.1"
 SOCKS5_PORT = 9050
 if SOCKS5_IP:
 	import socks
@@ -64,6 +65,10 @@ def main():
 	movies = convertRutorResults(results)
 	movies.sort(key = operator.itemgetter("torrentsDate"), reverse = True)
 	saveHTML(movies, HTML_SAVE_PATH)
+	
+	if "HTML_SAVE_PATH_LINKS" in globals():
+		saveHTML(movies, HTML_SAVE_PATH_LINKS, useMagnet=False)
+		
 	print("Работа программы завершена успешно.")
 	
 	return
@@ -207,6 +212,9 @@ def convertRutorResults(rutorResults):
 			tr.pop("WEB-DL 2160p HDR", None)
 			tr.pop("WEB-DL 2160p SDR", None)
 			tr.pop("WEB-DL 1080p", None)
+		
+		if tr.get("UHD BDRemux HDR"):
+			tr.pop("UHD BDRemux SDR", None)
 		
 		finalResult = []
 		
@@ -414,12 +422,16 @@ def filmDetail(filmID):
 		if not isinstance(premiereDigital, str):
 			premiereDigital = None
 		premierDate = None
-		if premiereRU:
+		premierType = None
+		if (not premierDate) and premiereRU:
 			premierDate = datetime.datetime.strptime(premiereRU, "%d.%m.%Y").date()
+			premierType = "ru"
 		if (not premierDate) and premiereWorld:
 			premierDate = datetime.datetime.strptime(premiereWorld, "%d.%m.%Y").date()
+			premierType = "world"
 		if (not premierDate) and premiereDigital:
 			premierDate = datetime.datetime.strptime(premiereDigital, "%d.%m.%Y").date()
+			premierType = "digital"
 		
 		directors = []
 		actors = []
@@ -486,6 +498,7 @@ def filmDetail(filmID):
 	result["webURL"] = webURL
 	if premierDate:
 		result["premierDate"] = premierDate
+		result["premierType"] = premierType
 	
 	return result
 
@@ -532,13 +545,13 @@ def parseRutorElement(dict):
 	
 	if ("LINE" in tags) or ("UKR" in tags) or ("3D-VIDEO" in tags) or ("60 FPS" in tags) or (("1080" in fullName) and ("HDR" in tags)) or ("UHD BDRIP" in fullName) or ("[" in fullName) or ("]" in fullName):
 		return None
-	
+
 	patternYear = re.compile("\((\d{4})\)")
 	match = re.search(patternYear, tmpParts[0])
 	
 	if not match:
 		return None
-	
+		
 	year = match[1]
 	targetYear = (datetime.date.today() - datetime.timedelta(days=365)).year
 	if int(year) < targetYear:
@@ -760,7 +773,7 @@ def loadKinopoiskContent(baseURL, requestMethod, CLIENTID=KINOPOISK_CLIENTID, AP
 	
 	return loadURLContent(baseURL + requestMethod, headers=headers, attempts=attempts, useProxy=useProxy)
 
-def saveHTML(movies, filePath):
+def saveHTML(movies, filePath, useMagnet=USE_MAGNET):
 	f = open(filePath,'w', encoding='utf-8')
 	html =  """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="ru-RU">
@@ -1144,7 +1157,12 @@ function sortTorrentsDate(){
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", movie["ratingIMDb"])
 		else:
 			descriptionBlock += descriptionTemplate.format("рейтинг IMDb", "нет (возможно, мало голосов)")
-		descriptionBlock += descriptionTemplate.format("премьера", movie["premierDate"].strftime("%d.%m.%Y"))
+		prHeader = "премьера"
+		if movie["premierType"] == "digital":
+			prHeader = "цифровая премьера"
+		elif movie["premierType"] == "ru":
+			prHeader = "премьера в России"
+		descriptionBlock += descriptionTemplate.format(prHeader, movie["premierDate"].strftime("%d.%m.%Y"))
 		descriptionBlock += descriptionTemplate.format("торрент-релиз", "<a href=\"{}\" style=\"text-decoration: underline; color:black\" target=\"_blank\">{}</a>".format("http://rutor.info/search/0/0/010/0/film%20" + movie["filmID"], movie["torrentsDate"].strftime("%d.%m.%Y")))
 		descriptionBlock += descriptionTemplate.format("описание", movie["description"])
 		
@@ -1152,7 +1170,7 @@ function sortTorrentsDate(){
 		torrents = movie["torrents"]
 		buttonsBlock = "" 
 		for torrent in torrents:
-			if USE_MAGNET:
+			if useMagnet:
 				buttonsBlock += buttonsTemplate.format(torrent["magnet"], torrent["type"])
 			else:
 				buttonsBlock += buttonsTemplate.format(torrent["link"], torrent["type"])
