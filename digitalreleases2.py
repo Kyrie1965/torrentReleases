@@ -22,7 +22,7 @@ HTML_SAVE_PATH = "/opt/share/www/releases.html"
 #HTML_SAVE_PATH = r"C:\Users\Yuri\releases.html"
 HTML_SAVE_PATH_LINKS = "/opt/share/www/releases_links.html"
 
-SOCKS5_IP = "192.168.0.1"
+SOCKS5_IP = ""
 SOCKS5_PORT = 9050
 if SOCKS5_IP:
 	import socks
