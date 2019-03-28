@@ -871,7 +871,7 @@ def kinozalSearch(filmDetail, opener, type):
 	
 	if len(elements) == 0:
 		return None
-	
+
 	for element in elements:
 		contents = element.contents
 		if len(contents) != 7:
@@ -883,11 +883,16 @@ def kinozalSearch(filmDetail, opener, type):
 		leechers = int(contents[4].get_text(strip=True))
 		dateStr = contents[5].get_text(strip=True)
 		
-		patternDate = re.compile("\d{2}.\d{2}.\d{4}")
-		matches = re.findall(patternDate, dateStr)
-		if len(matches) != 1:
-			continue
-		torrentDate = datetime.datetime.strptime(matches[0], "%d.%m.%Y").date()
+		if "сегодня" in dateStr:
+			torrentDate = datetime.date.today()
+		elif "вчера" in dataStr:
+			torrentDate = datetime.date.today() - datetime.timedelta(days=1)
+		else:
+			patternDate = re.compile("\d{2}.\d{2}.\d{4}")
+			matches = re.findall(patternDate, dateStr)
+			if len(matches) != 1:
+				continue
+			torrentDate = datetime.datetime.strptime(matches[0], "%d.%m.%Y").date()
 		
 		if torrentDate <= targetDate:
 			continue
@@ -903,7 +908,8 @@ def kinozalSearch(filmDetail, opener, type):
 
 		if not match:
 			continue
-
+			
+		
 		namesPart = (fullName[:match.end()]).strip().upper().replace("Ё", "Е")
 		typePart = (fullName[match.end():]).strip().upper()
 		
@@ -924,7 +930,7 @@ def kinozalSearch(filmDetail, opener, type):
 				continue
 		else:
 			return None
-			
+		
 		if ("3D" in typePart) or ("TS" in typePart) or ("LINE" in typePart):
 			continue
 		
