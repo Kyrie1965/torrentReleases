@@ -885,7 +885,7 @@ def kinozalSearch(filmDetail, opener, type):
 		
 		if "сегодня" in dateStr:
 			torrentDate = datetime.date.today()
-		elif "вчера" in dataStr:
+		elif "вчера" in dateStr:
 			torrentDate = datetime.date.today() - datetime.timedelta(days=1)
 		else:
 			patternDate = re.compile("\d{2}.\d{2}.\d{4}")
