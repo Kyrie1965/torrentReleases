@@ -21,8 +21,6 @@ SORT_TYPE = "torrentsDate" #rating
 MIN_VOTES_KP = 500
 MIN_VOTES_IMDB = 1500
 HTML_SAVE_PATH = "/opt/share/www/releases.html"
-#HTML_SAVE_PATH = r"C:\Users\Yuri\releases.html"
-#HTML_SAVE_PATH_LINKS = "/opt/share/www/releases_links.html"
 
 SOCKS5_IP = ""
 SOCKS5_PORT = 9050
@@ -817,14 +815,16 @@ def kinozalAuth(username, password, useProxy = True):
 	headers = {}
 	headers["Accept-encoding"] = "gzip"
 	headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0"
-
+	
 	cookiejar = http.cookiejar.CookieJar()
-	opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookiejar))
-
+	
 	if useProxy and SOCKS5_IP:
 		proxyHandler = SocksiPyHandler(socks.PROXY_TYPE_SOCKS5, SOCKS5_IP, SOCKS5_PORT)
-		opener.add_handler(proxyHandler)
-
+		opener = urllib.request.build_opener(proxyHandler)
+		opener.add_handler(urllib.request.HTTPCookieProcessor(cookiejar))
+	else:
+		opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookiejar))
+	
 	values = {"username":username, "password":password}
 	data = urllib.parse.urlencode(values).encode()
 	
