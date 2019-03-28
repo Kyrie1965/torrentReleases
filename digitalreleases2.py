@@ -12,6 +12,8 @@ import re
 import operator
 import os
 import binascii
+import urllib.parse
+import http.cookiejar
 
 LOAD_DAYS = 60
 USE_MAGNET = True
@@ -20,7 +22,7 @@ MIN_VOTES_KP = 500
 MIN_VOTES_IMDB = 1500
 HTML_SAVE_PATH = "/opt/share/www/releases.html"
 #HTML_SAVE_PATH = r"C:\Users\Yuri\releases.html"
-HTML_SAVE_PATH_LINKS = "/opt/share/www/releases_links.html"
+#HTML_SAVE_PATH_LINKS = "/opt/share/www/releases_links.html"
 
 SOCKS5_IP = ""
 SOCKS5_PORT = 9050
@@ -41,6 +43,11 @@ KINOPOISK_API_SALT = "IDATevHDS7"
 KINOPOISK_CLIENTID = binascii.b2a_hex(os.urandom(12)).decode('ascii')
 KINOPOISK_UUID = binascii.b2a_hex(os.urandom(16)).decode('ascii')
 KINOPOISK_POSTER_URL = "https://st.kp.yandex.net/images/{}{}width=360"
+
+KINOZAL_SEARCH_BDREMUX = "http://kinozal.tv/browse.php?s=%5E{}&g=3&c=0&v=4&d=0&w=0&t=0&f=0"
+KINOZAL_SEARCH_BDRIP = "http://kinozal.tv/browse.php?s=%5E{}&g=3&c=0&v=3&d=0&w=0&t=0&f=0"
+KINOZAL_USERNAME = ""
+KINOZAL_PASSWORD = ""
 
 def main():
 	print("Дата и время запуска программы: " + str(datetime.datetime.now()) + ".")
@@ -132,6 +139,14 @@ def convertRutorResults(rutorResults):
 	
 	movies = []
 	
+	try:
+		if KINOZAL_USERNAME:
+			opener = kinozalAuth(KINOZAL_USERNAME, KINOZAL_PASSWORD)
+		else:
+			opener = None
+	except:
+		opener = None
+
 	for key, values in rutorResults.items():
 		BDDate = None
 		WBDate = None
@@ -216,31 +231,6 @@ def convertRutorResults(rutorResults):
 		if tr.get("UHD BDRemux HDR"):
 			tr.pop("UHD BDRemux SDR", None)
 		
-		finalResult = []
-		
-		if tr.get("WEB-DL 1080p"):
-			finalResult.append({"link": tr["WEB-DL 1080p"]["fileLink"], "magnet": tr["WEB-DL 1080p"]["magnetLink"], "date": tr["WEB-DL 1080p"]["date"], "type": "WEB-DL 1080p"})
-		if tr.get("WEB-DL 2160p HDR"):
-			finalResult.append({"link": tr["WEB-DL 2160p HDR"]["fileLink"], "magnet": tr["WEB-DL 2160p HDR"]["magnetLink"], "date": tr["WEB-DL 2160p HDR"]["date"], "type": "WEB-DL 2160p HDR"})
-		elif tr.get("WEB-DL 2160p SDR"):
-			finalResult.append({"link": tr["WEB-DL 2160p SDR"]["fileLink"], "magnet": tr["WEB-DL 2160p SDR"]["magnetLink"], "date": tr["WEB-DL 2160p SDR"]["date"], "type": "WEB-DL 2160p SDR"})
-		if tr.get("BDRip 1080p"):
-			finalResult.append({"link": tr["BDRip 1080p"]["fileLink"], "magnet": tr["BDRip 1080p"]["magnetLink"], "date": tr["BDRip 1080p"]["date"], "type": "BDRip 1080p"})
-		if tr.get("BDRip-HEVC 1080p"):
-			finalResult.append({"link": tr["BDRip-HEVC 1080p"]["fileLink"], "magnet": tr["BDRip-HEVC 1080p"]["magnetLink"], "date": tr["BDRip-HEVC 1080p"]["date"], "type": "BDRip-HEVC 1080p"})
-		if tr.get("BDRemux"):
-			finalResult.append({"link": tr["BDRemux"]["fileLink"], "magnet": tr["BDRemux"]["magnetLink"], "date": tr["BDRemux"]["date"], "type": "BDRemux"})
-		if tr.get("UHD BDRemux HDR"):
-			finalResult.append({"link": tr["UHD BDRemux HDR"]["fileLink"], "magnet": tr["UHD BDRemux HDR"]["magnetLink"], "date": tr["UHD BDRemux HDR"]["date"], "type": "UHD BDRemux HDR"})
-		elif tr.get("UHD BDRemux SDR"):
-			finalResult.append({"link": tr["UHD BDRemux SDR"]["fileLink"], "magnet": tr["UHD BDRemux SDR"]["magnetLink"], "date": tr["UHD BDRemux SDR"]["date"], "type": "UHD BDRemux SDR"})
-		
-		
-		dates = []
-		for torrent in finalResult:
-			dates.append(torrent["date"])
-		dates.sort()
-
 		print("Загрузка данных для фильма с ID " + values[0]["filmID"] + "...")
 		try:
 			detail = filmDetail(values[0]["filmID"])
@@ -255,6 +245,56 @@ def convertRutorResults(rutorResults):
 		if detail["premierDate"] < minPremierDate:
 			print("Фильм \"" + detail["nameRU"] + "\" слишком старый. Пропуск фильма.")
 			continue
+
+		finalResult = []
+		
+		if tr.get("WEB-DL 1080p"):
+			finalResult.append({"link": tr["WEB-DL 1080p"]["fileLink"], "magnet": tr["WEB-DL 1080p"]["magnetLink"], "date": tr["WEB-DL 1080p"]["date"], "type": "WEB-DL 1080p"})
+		if tr.get("WEB-DL 2160p HDR"):
+			finalResult.append({"link": tr["WEB-DL 2160p HDR"]["fileLink"], "magnet": tr["WEB-DL 2160p HDR"]["magnetLink"], "date": tr["WEB-DL 2160p HDR"]["date"], "type": "WEB-DL 2160p HDR"})
+		elif tr.get("WEB-DL 2160p SDR"):
+			finalResult.append({"link": tr["WEB-DL 2160p SDR"]["fileLink"], "magnet": tr["WEB-DL 2160p SDR"]["magnetLink"], "date": tr["WEB-DL 2160p SDR"]["date"], "type": "WEB-DL 2160p SDR"})
+		if tr.get("BDRip 1080p"):
+			finalResult.append({"link": tr["BDRip 1080p"]["fileLink"], "magnet": tr["BDRip 1080p"]["magnetLink"], "date": tr["BDRip 1080p"]["date"], "type": "BDRip 1080p"})
+		elif USE_MAGNET and (tr.get("BDRip-HEVC 1080p") or tr.get("BDRemux")) and opener:
+			print("Пробуем найти отсутствующий BDRip 1080p на kinozal.tv...")
+			kName = detail["nameRU"]
+			kNameOriginal = detail["nameOriginal"]
+			if not kNameOriginal:
+				kNameOriginal = kName
+			try:
+				kRes = kinozalSearch({"nameRU" : kName, "nameOriginal":kNameOriginal, "year": detail["year"]}, opener, "BDRip 1080p")
+				if kRes:
+					print("Отсутствующий BDRip 1080p найден на kinozal.tv.")
+					finalResult.append(kRes)
+			except:
+				pass
+		if tr.get("BDRip-HEVC 1080p"):
+			finalResult.append({"link": tr["BDRip-HEVC 1080p"]["fileLink"], "magnet": tr["BDRip-HEVC 1080p"]["magnetLink"], "date": tr["BDRip-HEVC 1080p"]["date"], "type": "BDRip-HEVC 1080p"})
+		if tr.get("BDRemux"):
+			finalResult.append({"link": tr["BDRemux"]["fileLink"], "magnet": tr["BDRemux"]["magnetLink"], "date": tr["BDRemux"]["date"], "type": "BDRemux"})
+		elif USE_MAGNET and (tr.get("BDRip-HEVC 1080p") or tr.get("BDRip 1080p")) and opener:
+			print("Пробуем найти отсутствующий BDRemux на kinozal.tv...")
+			kName = detail["nameRU"]
+			kNameOriginal = detail["nameOriginal"]
+			if not kNameOriginal:
+				kNameOriginal = kName
+			try:
+				kRes = kinozalSearch({"nameRU" : kName, "nameOriginal":kNameOriginal, "year": detail["year"]}, opener, "BDRemux")
+				if kRes:
+					print("Отсутствующий BDRemux найден на kinozal.tv.")
+					finalResult.append(kRes)
+			except:
+				pass
+		if tr.get("UHD BDRemux HDR"):
+			finalResult.append({"link": tr["UHD BDRemux HDR"]["fileLink"], "magnet": tr["UHD BDRemux HDR"]["magnetLink"], "date": tr["UHD BDRemux HDR"]["date"], "type": "UHD BDRemux HDR"})
+		elif tr.get("UHD BDRemux SDR"):
+			finalResult.append({"link": tr["UHD BDRemux SDR"]["fileLink"], "magnet": tr["UHD BDRemux SDR"]["magnetLink"], "date": tr["UHD BDRemux SDR"]["date"], "type": "UHD BDRemux SDR"})
+		
+		dates = []
+		for torrent in finalResult:
+			dates.append(torrent["date"])
+		dates.sort()
 
 		detail["torrents"] = finalResult
 		detail["torrentsDate"] = dates[0]
@@ -772,6 +812,183 @@ def loadKinopoiskContent(baseURL, requestMethod, CLIENTID=KINOPOISK_CLIENTID, AP
 	headers["X-SIGNATURE"] = hashlib.md5(hashString.encode('utf-8')).hexdigest()
 	
 	return loadURLContent(baseURL + requestMethod, headers=headers, attempts=attempts, useProxy=useProxy)
+
+def kinozalAuth(username, password, useProxy = True):
+	headers = {}
+	headers["Accept-encoding"] = "gzip"
+	headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0"
+
+	cookiejar = http.cookiejar.CookieJar()
+	opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookiejar))
+
+	if useProxy and SOCKS5_IP:
+		proxyHandler = SocksiPyHandler(socks.PROXY_TYPE_SOCKS5, SOCKS5_IP, SOCKS5_PORT)
+		opener.add_handler(proxyHandler)
+
+	values = {"username":username, "password":password}
+	data = urllib.parse.urlencode(values).encode()
+	
+	request = urllib.request.Request("http://kinozal.tv/takelogin.php", data=data, headers=headers)
+	response = opener.open(request)
+	cookieSet = set()
+	
+	for cookie in cookiejar:
+		cookieSet.add(cookie.name)
+	
+	if ("pass" in cookieSet) and ("uid" in cookieSet):
+		return opener
+	
+	return None
+
+def kinozalSearch(filmDetail, opener, type):
+	targetDate = datetime.date.today() - datetime.timedelta(days=LOAD_DAYS)
+	headers = {}
+	headers["Accept-encoding"] = "gzip"
+	headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0"
+
+	result = {}
+	DBResults = []
+	PMResults = []
+	
+	if type == "BDRip 1080p" or type == "BDRip-HEVC 1080p":
+		request = urllib.request.Request(KINOZAL_SEARCH_BDRIP.format(quote(filmDetail["nameRU"])), headers=headers)
+	elif type == "BDRemux":
+		request = urllib.request.Request(KINOZAL_SEARCH_BDREMUX.format(quote(filmDetail["nameRU"])), headers=headers)
+	else:
+		return None
+
+	response = opener.open(request)
+	if response.info().get("Content-Encoding") == "gzip":
+		gzipFile = gzip.GzipFile(fileobj=response)
+		content = gzipFile.read().decode(response.info().get_content_charset())
+	else:
+		content = response.read().decode(response.info().get_content_charset())
+
+	content = content.replace("\n", "")
+	soup = BeautifulSoup(content, 'html.parser')
+	
+	elements = soup.find_all("td", class_=["nam"])
+	
+	if len(elements) == 0:
+		return None
+	
+	for element in elements:
+		contents = element.contents
+		if len(contents) != 7:
+			continue
+		
+		fullName = contents[0].get_text(strip=True)
+		torrentLink = contents[0].get("href").strip()
+		seeders = int(contents[3].get_text(strip=True))
+		leechers = int(contents[4].get_text(strip=True))
+		dateStr = contents[5].get_text(strip=True)
+		
+		patternDate = re.compile("\d{2}.\d{2}.\d{4}")
+		matches = re.findall(patternDate, dateStr)
+		if len(matches) != 1:
+			continue
+		torrentDate = datetime.datetime.strptime(matches[0], "%d.%m.%Y").date()
+		
+		if torrentDate <= targetDate:
+			continue
+			
+		patternID = re.compile("id=(\d+)")
+		matches = re.findall(patternID, torrentLink)
+		if len(matches) != 1:
+			continue
+		kinozalID = matches[0]
+		
+		patternYear = re.compile("/ \d{4} /")
+		match = re.search(patternYear, fullName)
+
+		if not match:
+			continue
+
+		namesPart = (fullName[:match.end()]).strip().upper().replace("Ё", "Е")
+		typePart = (fullName[match.end():]).strip().upper()
+		
+		year = int(filmDetail["year"])
+		nameRU = filmDetail["nameRU"].upper().replace("Ё", "Е")
+		nameOriginal = filmDetail["nameOriginal"].upper().replace("Ё", "Е")
+		
+		if type == "BDRip 1080p":
+			if not ((nameRU in namesPart) and (nameOriginal in namesPart) and ((str(year) in namesPart) or (str(year - 1) in namesPart) or (str(year + 1) in namesPart)) and ("BDRIP" in typePart) and ("1080P" in typePart)):
+				continue
+			if ("HEVC" in typePart):
+				continue
+		elif type == "BDRemux":
+			if not ((nameRU in namesPart) and (nameOriginal in namesPart) and ((str(year) in namesPart) or (str(year - 1) in namesPart) or (str(year + 1) in namesPart)) and ("REMUX" in typePart) and (("1080P" in typePart) or ("1080I" in typePart))):
+				continue
+		elif type == "BDRip-HEVC 1080p":
+			if not ((nameRU in namesPart) and (nameOriginal in namesPart) and ((str(year) in namesPart) or (str(year - 1) in namesPart) or (str(year + 1) in namesPart)) and ("BDRIP" in typePart) and ("HEVC" in typePart) and ("1080P" in typePart)):
+				continue
+		else:
+			return None
+			
+		if ("3D" in typePart) or ("TS" in typePart) or ("LINE" in typePart):
+			continue
+		
+		if ("ДБ" in typePart) or ("РУ" in typePart):
+			DBResults.append({"fullName": fullName, "kinozalID": kinozalID, "torrentDate": torrentDate, "seeders":seeders, "leechers": leechers})
+		
+		if ("ПМ" in typePart) and not (("ДБ" in typePart) or ("РУ" in typePart)):
+			PMResults.append({"fullName": fullName, "kinozalID": kinozalID, "torrentDate": torrentDate, "seeders":seeders, "leechers": leechers})
+		
+	if len(DBResults) > 0:
+		DBResults.sort(key = operator.itemgetter("seeders"), reverse = True)
+		if DBResults[0]["seeders"] == 0:
+			return None
+		request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&action=2".format(DBResults[0]["kinozalID"]), headers=headers)
+		response = opener.open(request)
+		if response.info().get("Content-Encoding") == "gzip":
+			gzipFile = gzip.GzipFile(fileobj=response)
+			content = gzipFile.read().decode(response.info().get_content_charset())
+		else:
+			content = response.read().decode(response.info().get_content_charset())
+		
+		patternHash = re.compile("[A-F0-9]{40}")
+		match = re.search(patternHash, content)
+	
+		if not match:
+			return None
+		
+		return {"link": "http://kinozal.tv", "magnet": "magnet:?xt=urn:btih:{}&dn=kinozal.tv".format(match[0]), "date": DBResults[0]["torrentDate"], "type": type}
+	elif len(PMResults) > 0:
+		newPMResults = []
+		
+		for pm in PMResults:
+			request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&pagesd=0".format(PMResults[0]["kinozalID"]), headers=headers)
+			response = opener.open(request)
+			if response.info().get("Content-Encoding") == "gzip":
+				gzipFile = gzip.GzipFile(fileobj=response)
+				content = gzipFile.read().decode(response.info().get_content_charset())
+			else:
+				content = response.read().decode(response.info().get_content_charset())
+				
+			content = content.upper()
+			if ("ЛИЦЕНЗИЯ" in content) or ("ITUNES" in content) or ("НЕВАФИЛЬМ" in content) or ("ПИФАГОР" in content) or ("AMEDIA" in content) or ("МОСФИЛЬМ-МАСТЕР" in content) or ("СВ-ДУБЛЬ" in content):
+				newPMResults.append(pm)
+		
+		if len(newPMResults) > 0:
+			newPMResults.sort(key = operator.itemgetter("seeders"), reverse = True)
+			if newPMResults[0]["seeders"] == 0:
+				return None
+			request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&action=2".format(newPMResults[0]["kinozalID"]), headers=headers)
+			response = opener.open(request)
+			if response.info().get("Content-Encoding") == "gzip":
+				gzipFile = gzip.GzipFile(fileobj=response)
+				content = gzipFile.read().decode(response.info().get_content_charset())
+			else:
+				content = response.read().decode(response.info().get_content_charset())
+			
+			patternHash = re.compile("[A-F0-9]{40}")
+			match = re.search(patternHash, content)
+		
+			if not match:
+				return None
+			
+			return {"link": "http://kinozal.tv", "magnet": "magnet:?xt=urn:btih:{}&dn=kinozal.tv".format(match[0]), "date": newPMResults[0]["torrentDate"], "type": type}
+	return None
 
 def saveHTML(movies, filePath, useMagnet=USE_MAGNET):
 	f = open(filePath,'w', encoding='utf-8')
