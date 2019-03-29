@@ -380,6 +380,43 @@ def loadURLContent(url, headers={}, attempts=CONNECTION_ATTEMPTS, useProxy=False
 		
 	return content
 
+def kinopoiskRating(filmID, useProxy = False):
+	result = {}
+	
+	headers = {}
+	headers["Accept-encoding"] = "gzip"
+	headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0"
+	
+	if useProxy and SOCKS5_IP:
+		proxyHandler = SocksiPyHandler(socks.PROXY_TYPE_SOCKS5, SOCKS5_IP, SOCKS5_PORT)
+		opener = urllib.request.build_opener(proxyHandler)
+	else:
+		opener = urllib.request.build_opener()
+	
+	request = urllib.request.Request("https://rating.kinopoisk.ru/{}.xml".format(filmID), headers=headers)
+	response = opener.open(request)
+	if response.info().get("Content-Encoding") == "gzip":
+		gzipFile = gzip.GzipFile(fileobj=response)
+		content = gzipFile.read().decode(response.info().get_content_charset())
+	else:
+		content = response.read().decode(response.info().get_content_charset())
+	
+	patternKP = re.compile("<kp_rating num_vote=\"([0-9]+)\">([0-9]*\.[0-9]*)</kp_rating>")
+	matches = re.findall(patternKP, content)
+	
+	if len(matches) == 1:
+		result["rating"] = matches[0][1]
+		result["ratingVoteCount"] = matches[0][0]
+	
+	patternIMDb = re.compile("<imdb_rating num_vote=\"([0-9]+)\">([0-9]*\.[0-9]*)</imdb_rating>")
+	matches = re.findall(patternIMDb, content)
+	
+	if len(matches) == 1:
+		result["ratingIMDb"] = matches[0][1]
+		result["ratingIMDbVoteCount"] = matches[0][0]
+	
+	return result
+
 def filmDetail(filmID):
 	result = {}
 	content = None
@@ -509,6 +546,34 @@ def filmDetail(filmID):
 						actors.append(person.get("nameRU"))
 	else:
 		raise ValueError("Ошибка загрузки данных для filmID " + filmID + ".")
+	
+	freshRating = {}
+	try:
+		freshRating = kinopoiskRating(filmID)
+	except:
+		pass
+		
+	if freshRating.get("rating") and freshRating.get("ratingVoteCount"):
+		ratingKP = freshRating.get("rating")
+		ratingKPCount = freshRating.get("ratingVoteCount")
+		try:
+			ratingKP = "{0:.1f}".format(float(ratingKP))
+			ratingKPCount = int(ratingKPCount)
+		except:
+			ratingKPCount = 0
+		if ratingKPCount < MIN_VOTES_KP:
+			ratingKP = ""
+	
+	if freshRating.get("ratingIMDb") and freshRating.get("ratingIMDbVoteCount"):
+		ratingIMDb = freshRating.get("ratingIMDb")
+		ratingIMDbCount = freshRating.get("ratingIMDbVoteCount")
+		try:
+			ratingIMDb = "{0:.1f}".format(float(ratingIMDb))
+			ratingIMDbCount = int(ratingIMDbCount)
+		except:
+			ratingIMDbCount = 0
+		if ratingIMDbCount < MIN_VOTES_IMDB:
+			ratingIMDb = ""
 	
 	if ratingIMDb and ratingKP:
 		rating = "{0:.1f}".format((float(ratingKP) + float(ratingIMDb)) / 2.0 + 0.001)
