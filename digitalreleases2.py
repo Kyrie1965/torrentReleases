@@ -14,6 +14,7 @@ import os
 import binascii
 import urllib.parse
 import http.cookiejar
+import sys
 
 LOAD_DAYS = 60
 USE_MAGNET = True
@@ -1352,7 +1353,7 @@ function sortTorrentsDate(){
           </div>
           <div class="photoBlock">
             <div class="film-img-box">
-              <div class="film-rating" style="background-color: {};">{}</div> 
+              <div class="film-rating" style="{}">{}</div> 
               <img src="{}" alt="{}" itemprop="image" width="205"></img>
             </div>
             <div class="movie-buttons-container">
@@ -1437,17 +1438,18 @@ function sortTorrentsDate(){
 		if len(movie["nameOriginal"]) > 0:
 			displayOrigName = ""
 		
-		ratingColor = "#aaa"
+		ratingStyle = "background-color: #aaa;"
 		if movie["ratingFloat"] >= 7:
-			ratingColor = "#3bb33b"
+			ratingStyle = "background-color: #3bb33b;"
 		elif movie["ratingFloat"] < 5.5:
-			ratingColor = "#b43c3c"
+			ratingStyle = "background-color: #b43c3c;"
 		
 		rating = movie["rating"]
 		if movie["ratingFloat"] < 1:
+			ratingStyle = "display: none;"
 			rating = "—"
 		
-		html += movieTemplate.format(movie["torrentsDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["torrentsDate"].strftime("%Y-%m-%d"), movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingColor, rating, movie["posterURL"], movie["nameRU"], "https://www.kinopoisk.ru/film/{}/video/".format(movie["filmID"]), descriptionBlock, buttonsBlock)
+		html += movieTemplate.format(movie["torrentsDate"].strftime("%Y-%m-%d"), movie["torrentsDate"].strftime("%Y-%m-%d"), movie["rating"], movie["torrentsDate"].strftime("%Y-%m-%d"), movie["nameRU"], displayOrigName, movie["nameOriginal"], ratingStyle, rating, movie["posterURL"], movie["nameRU"], "https://www.kinopoisk.ru/film/{}/video/".format(movie["filmID"]), descriptionBlock, buttonsBlock)
 		
 	html += """    </div>
   </div>
@@ -1456,5 +1458,10 @@ function sortTorrentsDate(){
 	f.write(html)
 	f.close()
 	return 
+
+try:
+	exitCode = main()
+except:
+	exitCode = 1
 	
-main()
+sys.exit(exitCode)
