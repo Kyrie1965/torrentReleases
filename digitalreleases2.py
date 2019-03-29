@@ -52,7 +52,7 @@ def main():
 	print("Количество попыток при ошибках соединения: " + str(CONNECTION_ATTEMPTS) + ".")
 	
 	if SOCKS5_IP:
-		print("Для rutor.info будет использоваться прокси-сервер SOCKS5: " + SOCKS5_IP + ":" + str(SOCKS5_PORT) + ".")
+		print("Для rutor.info и kinozal.tv будет использоваться прокси-сервер SOCKS5: " + SOCKS5_IP + ":" + str(SOCKS5_PORT) + ".")
 		
 	print("Проверка доступности rutor.info...")
 	try:
@@ -61,7 +61,7 @@ def main():
 	except:
 		print("Сайт rutor.info недоступен, или изменился его формат данных.")
 		print("Работа программы принудительно завершена.")
-		return
+		return 1
 	else:
 		print("Сайт rutor.info доступен.")
 	
@@ -76,7 +76,7 @@ def main():
 		
 	print("Работа программы завершена успешно.")
 	
-	return
+	return 0
 
 def rutorResultsForDays(days):
 	targetDate = datetime.date.today() - datetime.timedelta(days=days)
@@ -133,7 +133,7 @@ def rutorResultsForDays(days):
 	
 def convertRutorResults(rutorResults):
 	targetDate = datetime.date.today() - datetime.timedelta(days=LOAD_DAYS)
-	minPremierDate = datetime.date.today() - datetime.timedelta(days=(365 + LOAD_DAYS))
+	minPremierDate = datetime.date.today() - datetime.timedelta(days=365)
 	
 	movies = []
 	
@@ -254,7 +254,7 @@ def convertRutorResults(rutorResults):
 			finalResult.append({"link": tr["WEB-DL 2160p SDR"]["fileLink"], "magnet": tr["WEB-DL 2160p SDR"]["magnetLink"], "date": tr["WEB-DL 2160p SDR"]["date"], "type": "WEB-DL 2160p SDR"})
 		if tr.get("BDRip 1080p"):
 			finalResult.append({"link": tr["BDRip 1080p"]["fileLink"], "magnet": tr["BDRip 1080p"]["magnetLink"], "date": tr["BDRip 1080p"]["date"], "type": "BDRip 1080p"})
-		elif USE_MAGNET and (tr.get("BDRip-HEVC 1080p") or tr.get("BDRemux")) and opener:
+		elif (tr.get("BDRip-HEVC 1080p") or tr.get("BDRemux")) and opener:
 			print("Пробуем найти отсутствующий BDRip 1080p на kinozal.tv...")
 			kName = detail["nameRU"]
 			kNameOriginal = detail["nameOriginal"]
@@ -266,12 +266,26 @@ def convertRutorResults(rutorResults):
 					print("Отсутствующий BDRip 1080p найден на kinozal.tv.")
 					finalResult.append(kRes)
 			except:
-				pass
+				print("Какая-то ошибка при работе с kinozal.tv. Подробная информация о проблемах ещё не добавлена в функцию.")
 		if tr.get("BDRip-HEVC 1080p"):
 			finalResult.append({"link": tr["BDRip-HEVC 1080p"]["fileLink"], "magnet": tr["BDRip-HEVC 1080p"]["magnetLink"], "date": tr["BDRip-HEVC 1080p"]["date"], "type": "BDRip-HEVC 1080p"})
+		elif (tr.get("BDRip 1080p") or tr.get("BDRemux")) and opener:
+			print("Пробуем найти отсутствующий BDRip-HEVC 1080p на kinozal.tv...")
+			kName = detail["nameRU"]
+			kNameOriginal = detail["nameOriginal"]
+			if not kNameOriginal:
+				kNameOriginal = kName
+			try:
+				kRes = kinozalSearch({"nameRU" : kName, "nameOriginal":kNameOriginal, "year": detail["year"]}, opener, "BDRip-HEVC 1080p")
+				if kRes:
+					print("Отсутствующий BDRip-HEVC 1080p найден на kinozal.tv.")
+					finalResult.append(kRes)
+			except:
+				print("Какая-то ошибка при работе с kinozal.tv. Подробная информация о проблемах ещё не добавлена в функцию.")
+ 
 		if tr.get("BDRemux"):
 			finalResult.append({"link": tr["BDRemux"]["fileLink"], "magnet": tr["BDRemux"]["magnetLink"], "date": tr["BDRemux"]["date"], "type": "BDRemux"})
-		elif USE_MAGNET and (tr.get("BDRip-HEVC 1080p") or tr.get("BDRip 1080p")) and opener:
+		elif (tr.get("BDRip-HEVC 1080p") or tr.get("BDRip 1080p")) and opener:
 			print("Пробуем найти отсутствующий BDRemux на kinozal.tv...")
 			kName = detail["nameRU"]
 			kNameOriginal = detail["nameOriginal"]
@@ -283,7 +297,7 @@ def convertRutorResults(rutorResults):
 					print("Отсутствующий BDRemux найден на kinozal.tv.")
 					finalResult.append(kRes)
 			except:
-				pass
+				print("Какая-то ошибка при работе с kinozal.tv. Подробная информация о проблемах ещё не добавлена в функцию.")
 		if tr.get("UHD BDRemux HDR"):
 			finalResult.append({"link": tr["UHD BDRemux HDR"]["fileLink"], "magnet": tr["UHD BDRemux HDR"]["magnetLink"], "date": tr["UHD BDRemux HDR"]["date"], "type": "UHD BDRemux HDR"})
 		elif tr.get("UHD BDRemux SDR"):
@@ -405,6 +419,9 @@ def filmDetail(filmID):
 		ratingAgeLimits = itemData.get("ratingAgeLimits")
 		if ratingAgeLimits == None or not isinstance(ratingAgeLimits, str):
 			ratingAgeLimits = ""
+		ratingMPAA = itemData.get("ratingMPAA")
+		if ratingMPAA == None or not isinstance(ratingMPAA, str):
+			ratingMPAA = ""
 		posterURL = itemData.get("posterURL")
 		if posterURL == None or not isinstance(posterURL, str):
 			raise ValueError("Ошибка загрузки данных для filmID " + filmID + ". Проблемы со значением posterURL.")
@@ -525,6 +542,7 @@ def filmDetail(filmID):
 	result["country"] = country
 	result["genre"] = genre
 	result["ratingAgeLimits"] = ratingAgeLimits
+	result["ratingMPAA"] = ratingMPAA
 	result["posterURL"] = posterURL
 	result["filmLength"] = filmLength
 	result["ratingKP"] = ratingKP
@@ -574,12 +592,14 @@ def parseRutorElement(dict):
 	
 	fullName = tmpParts[0].strip().upper()
 	tags = set()
+	tagsStr = ""
 	
 	if len(tmpParts) > 1:
 		for i in range(1, len(tmpParts)):
 			moreParts = tmpParts[i].split(",")
 			for tmpPart in moreParts:
 				tags.add(tmpPart.strip().upper())
+				tagsStr = tagsStr + tmpPart.strip().upper() + " "
 	
 	if ("LINE" in tags) or ("UKR" in tags) or ("3D-VIDEO" in tags) or ("60 FPS" in tags) or (("1080" in fullName) and ("HDR" in tags)) or ("UHD BDRIP" in fullName) or ("[" in fullName) or ("]" in fullName):
 		return None
@@ -607,7 +627,7 @@ def parseRutorElement(dict):
 		nameOriginal = nameRU
 	
 	if not RU:
-		if not (("ЛИЦЕНЗИЯ" in tags) or ("ITUNES" in tags) or ("D" in tags) or ("D1" in tags) or ("D2" in tags) or ("НЕВАФИЛЬМ" in tags) or ("ПИФАГОР" in tags) or ("AMEDIA" in tags) or ("МОСФИЛЬМ-МАСТЕР" in tags) or ("СВ-ДУБЛЬ" in tags)):
+		if not (("ЛИЦЕНЗИЯ" in tags) or ("ITUNES" in tags) or ("D" in tags) or ("D1" in tags) or ("D2" in tags) or ("НЕВАФИЛЬМ" in tags) or ("ПИФАГОР" in tags) or ("AMEDIA" in tags) or ("МОСФИЛЬМ-МАСТЕР" in tags) or ("СВ-ДУБЛЬ" in tags) or ("КИРИЛЛИЦА" in tags) or ("АРК-ТВ" in tagsStr) or ("APK-ТВ" in tagsStr) or ("APK-TB" in tagsStr)):
 			return None
 	
 	if "UHD BDREMUX" in typePart:
@@ -637,7 +657,7 @@ def parseRutorElement(dict):
 		resolution = "1080p"
 	else:
 		return None
-		
+	
 	IMAX = True if (("IMAX" in tags) or ("IMAX EDITION" in tags)) else False
 	OpenMatte = True if ("OPEN MATTE" in tags) else False
 	
@@ -958,7 +978,7 @@ def kinozalSearch(filmDetail, opener, type):
 		if not match:
 			return None
 		
-		return {"link": "http://kinozal.tv", "magnet": "magnet:?xt=urn:btih:{}&dn=kinozal.tv".format(match[0]), "date": DBResults[0]["torrentDate"], "type": type}
+		return {"link": "http://dl.kinozal.tv/download.php?id={}".format(DBResults[0]["kinozalID"]), "magnet": "magnet:?xt=urn:btih:{}&dn=kinozal.tv".format(match[0]), "date": DBResults[0]["torrentDate"], "type": type}
 	elif len(PMResults) > 0:
 		newPMResults = []
 		
@@ -972,7 +992,7 @@ def kinozalSearch(filmDetail, opener, type):
 				content = response.read().decode(response.info().get_content_charset())
 				
 			content = content.upper()
-			if ("ЛИЦЕНЗИЯ" in content) or ("ITUNES" in content) or ("НЕВАФИЛЬМ" in content) or ("ПИФАГОР" in content) or ("AMEDIA" in content) or ("МОСФИЛЬМ-МАСТЕР" in content) or ("СВ-ДУБЛЬ" in content):
+			if ("ЛИЦЕНЗИЯ" in content) or ("ITUNES" in content) or ("НЕВАФИЛЬМ" in content) or ("ПИФАГОР" in content) or ("AMEDIA" in content) or ("МОСФИЛЬМ-МАСТЕР" in content) or ("СВ-ДУБЛЬ" in content) or ("АРК-ТВ" in content) or ("APK-ТВ" in content) or ("APK-TB" in content) or ("КИРИЛЛИЦА" in content):
 				newPMResults.append(pm)
 		
 		if len(newPMResults) > 0:
@@ -993,7 +1013,7 @@ def kinozalSearch(filmDetail, opener, type):
 			if not match:
 				return None
 			
-			return {"link": "http://kinozal.tv", "magnet": "magnet:?xt=urn:btih:{}&dn=kinozal.tv".format(match[0]), "date": newPMResults[0]["torrentDate"], "type": type}
+			return {"link": "http://dl.kinozal.tv/download.php?id={}".format(newPMResults[0]["kinozalID"]), "magnet": "magnet:?xt=urn:btih:{}&dn=kinozal.tv".format(match[0]), "date": newPMResults[0]["torrentDate"], "type": type}
 	return None
 
 def saveHTML(movies, filePath, useMagnet=USE_MAGNET):
@@ -1002,6 +1022,7 @@ def saveHTML(movies, filePath, useMagnet=USE_MAGNET):
 <html xmlns="http://www.w3.org/1999/xhtml" lang="ru-RU">
 <head>
 <meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, noodp, noydir, nosnippet" />
 <meta content="width=960" name="viewport">
 <title>Новые цифровые релизы</title>
 <style type="text/css">
@@ -1360,16 +1381,30 @@ function sortTorrentsDate(){
 		descriptionBlock += descriptionTemplate.format("актёры", movie["actors"])
 		descriptionBlock += descriptionTemplate.format("жанр", movie["genre"])
 		if len(movie["ratingAgeLimits"]) > 0:
-			if int(movie["ratingAgeLimits"]) < 6:
-				descriptionBlock += descriptionTemplate.format("возраст", "0+")
-			elif int(movie["ratingAgeLimits"]) < 12:
-				descriptionBlock += descriptionTemplate.format("возраст", "6+")
-			elif int(movie["ratingAgeLimits"]) < 16:
-				descriptionBlock += descriptionTemplate.format("возраст", "12+")
-			elif int(movie["ratingAgeLimits"]) <= 18:
-				descriptionBlock += descriptionTemplate.format("возраст", "16+")
+			try:
+				if int(movie["ratingAgeLimits"]) < 6:
+					descriptionBlock += descriptionTemplate.format("возраст", "любой")
+				elif int(movie["ratingAgeLimits"]) < 12:
+					descriptionBlock += descriptionTemplate.format("возраст", "от 6 лет")
+				elif int(movie["ratingAgeLimits"]) < 16:
+					descriptionBlock += descriptionTemplate.format("возраст", "от 12 лет")
+				elif int(movie["ratingAgeLimits"]) < 18:
+					descriptionBlock += descriptionTemplate.format("возраст", "от 16 лет")
+				else:
+					descriptionBlock += descriptionTemplate.format("возраст", "от 18 лет")
+			except:
+				pass
+		elif len(movie["ratingMPAA"]) > 0:
+			if movie["ratingMPAA"] == "G":
+				descriptionBlock += descriptionTemplate.format("возраст", "любой")
+			elif movie["ratingMPAA"] == "PG":
+				descriptionBlock += descriptionTemplate.format("возраст", "от 6 лет")
+			elif movie["ratingMPAA"] == "PG-13":
+				descriptionBlock += descriptionTemplate.format("возраст", "от 12 лет")
+			elif movie["ratingMPAA"] == "R":
+				descriptionBlock += descriptionTemplate.format("возраст", "от 16 лет")
 			else:
-				descriptionBlock += descriptionTemplate.format("возраст", "18+")
+				descriptionBlock += descriptionTemplate.format("возраст", "от 18 лет")
 		descriptionBlock += descriptionTemplate.format("продолжительность", movie["filmLength"])
 		if len(movie["ratingKP"]) > 0:
 			rKP = movie["ratingKP"]
