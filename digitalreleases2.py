@@ -964,7 +964,8 @@ def kinozalSearch(filmDetail, opener, type):
 	if len(DBResults) > 0:
 		DBResults.sort(key = operator.itemgetter("seeders"), reverse = True)
 		if DBResults[0]["seeders"] == 0:
-			return None
+			#return None
+			DBResults.sort(key = operator.itemgetter("torrentDate"), reverse = True)
 		request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&action=2".format(DBResults[0]["kinozalID"]), headers=headers)
 		response = opener.open(request)
 		if response.info().get("Content-Encoding") == "gzip":
@@ -984,7 +985,19 @@ def kinozalSearch(filmDetail, opener, type):
 		newPMResults = []
 		
 		for pm in PMResults:
-			request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&pagesd=0".format(PMResults[0]["kinozalID"]), headers=headers)
+			request = urllib.request.Request("http://kinozal.tv/details.php?id={}".format(PMResults[0]["kinozalID"]), headers=headers)
+			response = opener.open(request)
+			if response.info().get("Content-Encoding") == "gzip":
+				gzipFile = gzip.GzipFile(fileobj=response)
+				content = gzipFile.read().decode(response.info().get_content_charset())
+			else:
+				content = response.read().decode(response.info().get_content_charset())
+			patternTabID = re.compile("<a onclick=\"showtab\({},(\d)\); return false;\" href=\"#\">Релиз</a>".format(PMResults[0]["kinozalID"]))
+			matches = re.findall(patternTabID, content)
+			if len(matches) != 1:
+				continue
+
+			request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&pagesd={}".format(PMResults[0]["kinozalID"], matches[0]), headers=headers)
 			response = opener.open(request)
 			if response.info().get("Content-Encoding") == "gzip":
 				gzipFile = gzip.GzipFile(fileobj=response)
@@ -999,7 +1012,8 @@ def kinozalSearch(filmDetail, opener, type):
 		if len(newPMResults) > 0:
 			newPMResults.sort(key = operator.itemgetter("seeders"), reverse = True)
 			if newPMResults[0]["seeders"] == 0:
-				return None
+				#return None
+				newPMResults.sort(key = operator.itemgetter("torrentDate"), reverse = True)
 			request = urllib.request.Request("http://kinozal.tv/get_srv_details.php?id={}&action=2".format(newPMResults[0]["kinozalID"]), headers=headers)
 			response = opener.open(request)
 			if response.info().get("Content-Encoding") == "gzip":
