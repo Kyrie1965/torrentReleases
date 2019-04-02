@@ -17,29 +17,25 @@ import http.cookiejar
 import sys
 
 LOAD_DAYS = 60
-HTML_SAVE_PATH = "/opt/share/www/releases.html"
-KINOZAL_USERNAME = ""
-KINOZAL_PASSWORD = ""
-SOCKS5_IP = "192.168.0.1"
-SOCKS5_PORT = 9050
-
 USE_MAGNET = True
-SORT_TYPE = "torrentsDate" #rating
+SORT_TYPE = "torrentsDate" #rating #torrentsDate
 MIN_VOTES_KP = 500
 MIN_VOTES_IMDB = 1500
 HTML_SAVE_PATH = "/opt/share/www/releases.html"
 
+SOCKS5_IP = ""
+SOCKS5_PORT = 9050
 if SOCKS5_IP:
 	import socks
 	from sockshandler import SocksiPyHandler
 
 CONNECTION_ATTEMPTS = 3
 
-#RUTOR_BASE_URL = "http://rutor.info"
-RUTOR_BASE_URL = "http://www.rutorc6mqdinc4cz.onion"
+RUTOR_BASE_URL = "http://rutor.info"
+#RUTOR_BASE_URL = "http://www.rutorc6mqdinc4cz.onion"
 RUTOR_MONTHS = {"Янв": 1, "Фев": 2, "Мар": 3, "Апр": 4, "Май": 5, "Июн": 6, "Июл": 7, "Авг": 8, "Сен": 9, "Окт": 10, "Ноя": 11, "Дек": 12}
-#RUTOR_SEARCH_MAIN = "http://rutor.info/search/{}/{}/300/0/BDRemux|BDRip|(WEB%20DL)%201080p|2160p|1080%D1%80%7C2160%D1%80%7C1080i%20{}"
-RUTOR_SEARCH_MAIN = "http://www.rutorc6mqdinc4cz.onion/search/{}/{}/300/0/BDRemux|BDRip|(WEB%20DL)%201080p|2160p|1080%D1%80%7C2160%D1%80%7C1080i%20{}"
+RUTOR_SEARCH_MAIN = "http://rutor.info/search/{}/{}/300/0/BDRemux|BDRip|(WEB%20DL)%201080p|2160p|1080%D1%80%7C2160%D1%80%7C1080i%20{}"
+#RUTOR_SEARCH_MAIN = "http://www.rutorc6mqdinc4cz.onion/search/{}/{}/300/0/BDRemux|BDRip|(WEB%20DL)%201080p|2160p|1080%D1%80%7C2160%D1%80%7C1080i%20{}"
 
 KINOPOISK_API_IOS_BASE_URL = "https://ma.kinopoisk.ru/ios/5.0.0/"
 KINOPOISK_API_V1_BASE_URL = "https://ma.kinopoisk.ru"
@@ -51,6 +47,8 @@ KINOPOISK_POSTER_URL = "https://st.kp.yandex.net/images/{}{}width=360"
 
 KINOZAL_SEARCH_BDREMUX = "http://kinozal.tv/browse.php?s=%5E{}&g=3&c=0&v=4&d=0&w=0&t=0&f=0"
 KINOZAL_SEARCH_BDRIP = "http://kinozal.tv/browse.php?s=%5E{}&g=3&c=0&v=3&d=0&w=0&t=0&f=0"
+KINOZAL_USERNAME = ""
+KINOZAL_PASSWORD = ""
 
 def main():
 	print("Дата и время запуска программы: " + str(datetime.datetime.now()) + ".")
@@ -73,7 +71,7 @@ def main():
 	print("Анализ раздач...")
 	results = rutorResultsForDays(LOAD_DAYS)
 	movies = convertRutorResults(results)
-	movies.sort(key = operator.itemgetter("torrentsDate"), reverse = True)
+	movies.sort(key = operator.itemgetter(SORT_TYPE), reverse = True)
 	saveHTML(movies, HTML_SAVE_PATH)
 	
 	if "HTML_SAVE_PATH_LINKS" in globals():
@@ -103,7 +101,10 @@ def rutorResultsForDays(days):
 		while needMore:
 			pageResults = rutorResultsOnPage(content)
 			for result in pageResults:
+				#if ("Патрик" in result["name"]):
+				#print(result["name"])
 				if result["date"] >= targetDate:
+					#print(result["name"])
 					#if not ("Шутки в сторону" in result["name"]):
 						#continue
 					element = parseRutorElement(result)
@@ -290,6 +291,26 @@ def convertRutorResults(rutorResults):
 
 		finalResult = []
 		
+		if (tr.get("WEB-DL 1080p") or tr.get("WEB-DL 2160p HDR") or tr.get("WEB-DL 2160p SDR")) and opener:
+			print("Пробуем найти отсутствующий BDRip 1080p на kinozal.tv...")
+			kName = detail["nameRU"]
+			kNameOriginal = detail["nameOriginal"]
+			if not kNameOriginal:
+				kNameOriginal = kName
+			try:
+				kRes = kinozalSearch({"nameRU" : kName, "nameOriginal":kNameOriginal, "year": detail["year"]}, opener, "BDRip 1080p")
+				if kRes:
+					print("Отсутствующий BDRip 1080p найден на kinozal.tv.")
+					finalResult.append(kRes)
+					tr.pop("WEB-DL 2160p HDR", None)
+					tr.pop("WEB-DL 2160p SDR", None)
+					tr.pop("WEB-DL 1080p", None)
+					if kRes["license"]:
+						BDDateLicense = kRes["date"]
+					else:
+						BDDate = kRes["date"]
+			except:
+				print("Какая-то ошибка при работе с kinozal.tv. Подробная информация о проблемах ещё не добавлена в функцию.")
 		if tr.get("WEB-DL 1080p"):
 			finalResult.append({"link": tr["WEB-DL 1080p"]["fileLink"], "magnet": tr["WEB-DL 1080p"]["magnetLink"], "date": tr["WEB-DL 1080p"]["date"], "type": "WEB-DL 1080p", "license": tr["WEB-DL 1080p"]["license"]})
 		if tr.get("WEB-DL 2160p HDR"):
